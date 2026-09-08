@@ -26,6 +26,7 @@ export default function App() {
   const [summits, setSummits] = useState([]);
   const [famousCols, setFamousCols] = useState([]);
   const [missing, setMissing] = useState([]);
+  const [attempts, setAttempts] = useState({});
   const [stats, setStats] = useState(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -35,15 +36,17 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [s, f, m, st] = await Promise.all([
+      const [s, f, m, at, st] = await Promise.all([
         api.listSummits(),
         api.listFamousCols(),
         api.missingCols(),
+        api.colAttempts(),
         api.stats(),
       ]);
       setSummits(s);
       setFamousCols(f);
       setMissing(m);
+      setAttempts(at);
       setStats(st);
     } catch (e) {
       toast.error("Could not load data");
@@ -171,7 +174,7 @@ export default function App() {
               title="Famous Cols Catalog"
               sub="Legendary passes across the Alps, Pyrenees, Dolomites & beyond"
             />
-            <FamousColsView cols={famousCols} conqueredIds={conqueredIds} onQuickLog={openFromCol} />
+            <FamousColsView cols={famousCols} conqueredIds={conqueredIds} attempts={attempts} onQuickLog={openFromCol} />
           </div>
         )}
         {active === "missing" && (

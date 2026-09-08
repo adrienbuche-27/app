@@ -1,0 +1,18 @@
+{
+  "summary": "Verified both user-reported bug fixes end-to-end. BUG 1 (multi-attempts): Ventoux logged twice via Bédoin then Malaucène → catalog card correctly shows '✓ 2 rides' pill, per-side emerald checkmark pills for both climbed sides, grey pill for Sault, 'Your ascents' list with both dates and side names, and 'Log another ascent' button (data-testid=relog-mont-ventoux). Second submission created a NEW summit (distinct id) via POST — not a PUT. BUG 2 (side dropdown): Real-user click (no force=True) on data-testid='side-select' opens dropdown listing all 3 sides; picking Malaucène updates distance→21.2 and avg-grad→7.2; picking Sault updates distance→26 and avg-grad→4.5. No #webpack-dev-server-client-overlay present before or after interactions. Backend pytest 2/2 passing on new /api/col-attempts endpoint and lifecycle. Missing Matrix correctly excludes Ventoux after climb (regression OK).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_col_attempts.py", "/app/backend/tests/test_backend_climb_side_profile.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "index.js ResizeObserver silencing works — overlay absent throughout test. Consider also disabling devServer.client.overlay in CRA config for defence in depth (belt-and-suspenders).",
+    "Backend /api/col-attempts fallback name-matching is case/whitespace insensitive but ignores diacritics; only relevant if legacy summits exist without famous_col_id (currently fine).",
+    "AddSummitDialog uses editSummit even for a fresh 'Log another ascent' (prefill without id) — correctly triggers POST branch because editSummit.id is undefined. Clean pattern, worth an inline comment."
+  ],
+  "updated_files": ["/app/backend/tests/test_col_attempts.py", "/app/test_reports/iteration_4.json", "/app/test_reports/pytest/pytest_results.xml"],
+  "success_rate": {"backend": "100% (2/2 new + prior suite intact)", "frontend": "100% (all specified flows verified)"},
+  "seed_data_creation": "Created 2 Ventoux summits (2025-05-10 Bédoin, 2025-07-20 Malaucène) during frontend test; both DELETEd via /api/summits/{id} in finally block (200 OK).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Two user bugs are fully resolved. Regression suite: /app/backend/tests/test_col_attempts.py (2 tests) + test_backend_climb_side_profile.py (7 tests). For UI dropdown click tests, do NOT use force=True on data-testid=side-select — real click works and that's the whole point of the ResizeObserver fix in index.js."
+}

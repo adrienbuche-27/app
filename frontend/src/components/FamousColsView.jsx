@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { Check, MapPin, Search } from "lucide-react";
+import { Check, MapPin, Search, Plus, RefreshCw } from "lucide-react";
 
-export default function FamousColsView({ cols, conqueredIds, onQuickLog }) {
+export default function FamousColsView({ cols, conqueredIds, attempts = {}, onQuickLog }) {
   const [q, setQ] = useState("");
   const [region, setRegion] = useState("all");
 
@@ -57,6 +57,8 @@ export default function FamousColsView({ cols, conqueredIds, onQuickLog }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((c) => {
           const done = conqueredIds.has(c.id);
+          const rides = attempts[c.id] || [];
+          const rideCount = rides.length;
           return (
             <div key={c.id} className="card-vs p-5" data-testid={`col-${c.id}`}>
               <div className="flex items-start justify-between gap-3">
@@ -67,8 +69,8 @@ export default function FamousColsView({ cols, conqueredIds, onQuickLog }) {
                   </div>
                 </div>
                 {done ? (
-                  <span className="pill pill-emerald">
-                    <Check className="w-3 h-3" /> Done
+                  <span className="pill pill-emerald" data-testid={`done-pill-${c.id}`}>
+                    <Check className="w-3 h-3" /> {rideCount} ride{rideCount === 1 ? "" : "s"}
                   </span>
                 ) : (
                   <span className="pill pill-amber">Bucket</span>
@@ -88,26 +90,81 @@ export default function FamousColsView({ cols, conqueredIds, onQuickLog }) {
               </div>
               {c.sides && c.sides.length > 1 && (
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {c.sides.map((s) => (
-                    <span
-                      key={s.name}
-                      className="text-[10px] font-mono-tel uppercase tracking-wider text-slate-400 bg-slate-900 border border-slate-800 rounded-full px-2 py-0.5"
-                    >
-                      {s.name}
-                    </span>
-                  ))}
+                  {c.sides.map((s) => {
+                    const climbed = rides.some((r) => r.side_name === s.name);
+                    return (
+                      <span
+                        key={s.name}
+                        data-testid={`side-pill-${c.id}-${s.name}`}
+                        className={`text-[10px] font-mono-tel uppercase tracking-wider rounded-full px-2 py-0.5 border ${
+                          climbed
+                            ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/30"
+                            : "text-slate-400 bg-slate-900 border-slate-800"
+                        }`}
+                      >
+                        {climbed && "✓ "}
+                        {s.name}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
               <p className="mt-3 text-xs text-slate-400 italic">{c.history}</p>
-              {!done && (
-                <button
-                  data-testid={`quicklog-${c.id}`}
-                  onClick={() => onQuickLog(c)}
-                  className="mt-4 w-full py-2 rounded-lg bg-slate-900 hover:bg-orange-500 hover:text-white border border-slate-800 hover:border-orange-500 text-slate-200 text-sm font-semibold transition-[background-color,color,border-color]"
+
+              {rideCount > 0 && (
+                <div
+                  data-testid={`attempts-list-${c.id}`}
+                  className="mt-3 rounded-lg border border-slate-800 bg-slate-900/40 p-2 space-y-1"
                 >
-                  Mark as Conquered
-                </button>
+                  <div className="text-[10px] font-mono-tel uppercase tracking-wider text-slate-500 mb-1">
+                    Your ascents
+                  </div>
+                  {rides.slice(0, 4).map((r) => (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between text-[11px] text-slate-300"
+                    >
+                      <span className="truncate">
+                        {r.date_climbed || "—"}
+                        {r.side_name ? (
+                          <span className="text-slate-500"> · {r.side_name}</span>
+                        ) : null}
+                      </span>
+                      {r.duration_minutes ? (
+                        <span className="font-mono-tel text-slate-500">
+                          {Math.floor(r.duration_minutes / 60)}h
+                          {(r.duration_minutes % 60).toString().padStart(2, "0")}
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                  {rideCount > 4 && (
+                    <div className="text-[10px] text-slate-500">
+                      +{rideCount - 4} more
+                    </div>
+                  )}
+                </div>
               )}
+
+              <button
+                data-testid={done ? `relog-${c.id}` : `quicklog-${c.id}`}
+                onClick={() => onQuickLog(c)}
+                className={`mt-4 w-full py-2 rounded-lg inline-flex items-center justify-center gap-2 text-sm font-semibold transition-[background-color,color,border-color] border ${
+                  done
+                    ? "bg-slate-900 border-slate-800 text-emerald-300 hover:bg-emerald-500 hover:text-white hover:border-emerald-500"
+                    : "bg-slate-900 border-slate-800 text-slate-200 hover:bg-orange-500 hover:text-white hover:border-orange-500"
+                }`}
+              >
+                {done ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5" /> Log another ascent
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3.5 h-3.5" /> Mark as Conquered
+                  </>
+                )}
+              </button>
             </div>
           );
         })}

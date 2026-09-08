@@ -13,6 +13,7 @@ export const api = {
   refreshProfile: (id) => axios.post(`${API}/summits/${id}/refresh-profile`).then((r) => r.data),
   listFamousCols: () => axios.get(`${API}/famous-cols`).then((r) => r.data),
   missingCols: () => axios.get(`${API}/missing-cols`).then((r) => r.data),
+  colAttempts: () => axios.get(`${API}/col-attempts`).then((r) => r.data),
   stats: () => axios.get(`${API}/stats`).then((r) => r.data),
   uploadPhoto: (file) => {
     const fd = new FormData();

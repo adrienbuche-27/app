@@ -268,6 +268,25 @@ async def missing_cols():
     ]
 
 
+@api_router.get("/col-attempts")
+async def col_attempts():
+    """Return {col_id: [summit,...]} — all logged ascents per famous col."""
+    summits = await db.summits.find({}, {"_id": 0}).sort("date_climbed", -1).to_list(5000)
+    grouped: dict[str, list] = {}
+    for s in summits:
+        cid = s.get("famous_col_id")
+        if not cid:
+            # try match by name
+            for c in FAMOUS_COLS:
+                if s.get("name", "").lower().strip() == c["name"].lower().strip():
+                    cid = c["id"]
+                    break
+        if not cid:
+            continue
+        grouped.setdefault(cid, []).append(s)
+    return grouped
+
+
 # ---- Statistics -------------------------------------------------------------
 @api_router.get("/stats")
 async def stats():
