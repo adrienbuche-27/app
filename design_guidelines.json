@@ -1,0 +1,81 @@
+{
+  "project_name": "VeloSummit - Alpine Cycling Summit & Famous Col Tracker",
+  "archetype": "THE PERFORMANCE PRO + LUXURY ALPINE TECH",
+  "theme": "Dark Mode First (Obsidian Slate + Kinetic Solar Orange + Alpine Emerald)",
+  "instructions_to_main_agent": [
+    "Build a high-performance, dark-mode interactive cycling summit web app called 'VeloSummit // Apex Col Tracker' for avid cyclists to log conquered mountain passes, visualize them on Leaflet maps, analyze elevation statistics, and track missing famous climbs from the Alps, Pyrenees, Dolomites, and Rockies.",
+    "Ensure all interactive elements and data points include 'data-testid' attributes (e.g. data-testid='add-summit-button', data-testid='map-view-tab', data-testid='missing-climbs-filter', data-testid='summit-card-galibier', data-testid='elevation-stat-total').",
+    "DO NOT use generic centered layouts or plain light backgrounds. Use deep obsidian dark theme (#0B0F17 background, #161E2E card backgrounds, #1E293B borders, #FF5722 accent orange, #10B981 conquered emerald).",
+    "Integrate Leaflet map with dark tiles ('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png') and satellite view toggle. Add custom markers for conquered summits (glowing orange/emerald pins with elevation text) and missing famous cols (dashed amber pins).",
+    "Provide a pre-populated dataset of 12+ legendary cycling cols (Col du Galibier, Mont Ventoux, Alpe d'Huez, Passo dello Stelvio, Col du Tourmalet, Passo Gavia, Sa Calobra, Mortirolo, Grossglockner, Teide, Pikes Peak, Col de l'Iseran) with preset lat/lng, elevation, gradient, and region.",
+    "Implement full CRUD for User Summits: Add new summit with form inputs (Summit Name, Region/Country, Elevation in meters, Distance in km, Avg Gradient %, Max Gradient %, Date, Duration, VAM calculated as elevation/hours, Notes, Lat/Lng, Photo URL, HC Difficulty Rating). Allow edit and deletion.",
+    "Include a 'Missing Climb Matrix' / Comparison View that explicitly highlights legendary passes missing from the user's completed list, categorized by difficulty (HC, Cat 1, Cat 2) and mountain range.",
+    "Create a Statistics & Telemetry Dashboard using Recharts: Cumulative elevation gained, Everest scale progression bar (e.g. Total Elevation / 8848m), Climbs per Month/Year chart, Gradient Distribution, Highest Peak badge, and Average VAM stats.",
+    "Provide a Summit Gallery View with high-resolution mountain photos, filtering by region/elevation/conquered status, and a 'Summit Passport' downloadable / shareable card view."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Never apply transition: all globally; specify properties like 'transition: transform 0.2s ease, background-color 0.2s ease'.",
+    "Do NOT center align the root .App container; maintain natural left-aligned reading hierarchy with optical padding.",
+    "Containers with borders MUST have internal padding (p-6 or p-8) to prevent text collision.",
+    "All modals, dropdowns, and overlays MUST have solid/blur non-transparent backgrounds (bg-slate-900/95 backdrop-blur-xl border border-slate-800). Never allow transparent dropdowns.",
+    "Use data-testid on every button, tab, card, input, chart container, and toggle element."
+  ],
+  "typography": {
+    "heading_font": "Outfit, 'Cabinet Grotesk', system-ui, sans-serif",
+    "body_font": "Inter, 'DM Sans', system-ui, sans-serif",
+    "telemetry_mono_font": "'JetBrains Mono', 'Fira Code', monospace",
+    "scale": {
+      "hero_title": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase",
+      "section_heading": "text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight",
+      "card_title": "text-lg sm:text-xl font-bold tracking-normal",
+      "stat_value": "text-3xl sm:text-4xl font-black font-mono tracking-tight text-orange-500",
+      "badge_text": "text-xs font-semibold tracking-wider uppercase font-mono"
+    }
+  },
+  "colors": {
+    "background_main": "#0B0F17",
+    "background_card": "#161E2E",
+    "background_card_hover": "#1D283A",
+    "border_color": "#1E293B",
+    "border_highlight": "#334155",
+    "primary_accent": "#FF5722",
+    "primary_accent_glow": "rgba(255, 87, 34, 0.25)",
+    "conquered_emerald": "#10B981",
+    "conquered_emerald_glow": "rgba(16, 185, 129, 0.2)",
+    "missing_amber": "#F59E0B",
+    "text_primary": "#F8FAFC",
+    "text_secondary": "#94A3B8",
+    "text_muted": "#64748B",
+    "map_route_line": "#FF5722"
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-xl bg-slate-900/80 border border-slate-800/80 shadow-2xl",
+    "card_glow": "shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_30px_rgba(255,87,34,0.15)] transition-all duration-300",
+    "conquered_badge": "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full text-xs font-mono uppercase font-semibold flex items-center gap-1.5",
+    "missing_badge": "bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-full text-xs font-mono uppercase font-semibold flex items-center gap-1.5",
+    "grid_borders": "border-r border-b border-slate-800/60"
+  },
+  "components": {
+    "header_nav": "Fixed/Sticky glassmorphic bar with logo ('VELO.SUMMIT // APEX tracker'), live elevation counter ticker, navigation tabs (Map, Summits, Stats, Famous Cols Catalog, Missing Matrix), and 'Log Summit +' CTA button.",
+    "interactive_map": "Leaflet map container with custom dark tile layer, satellite layer switch, altitude markers, popup cards with elevation profile preview, VAM stats, and filter controls (All, Conquered, Bucket List Missing).",
+    "add_summit_modal": "Shadcn Dialog/Drawer with form fields for summit name, region, elevation, distance, avg gradient, max gradient, date, duration, ride notes, lat/lng selector, and photo URL.",
+    "famous_cols_catalog": "Filterable catalog of world's iconic mountain passes with status toggle ('Mark as Conquered' / 'Add to Bucket List'), elevation badges, steepest section details, and TdF/Giro history tags.",
+    "missing_climbs_matrix": "Comparison view listing missing bucket-list climbs sorted by priority/elevation gap, with proximity calculations and 'Plan Ascent' or 'Quick Complete' actions.",
+    "statistics_dashboard": "Bento-grid panel with Recharts charts: Elevation Progression (Cumulative Altitude vs Everest Benchmark), Monthly Climb Frequency bar chart, Gradient Severity Breakdown pie/histogram, and Peak Altitude Leaderboard.",
+    "summit_gallery": "Grid view of conquered summits displaying high-res photos, elevation overlay, date, VAM rating, search bar, and sorting controls."
+  },
+  "image_urls": {
+    "hero_banner": "https://images.unsplash.com/photo-1690633787691-73b964ad706b?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "cyclist_mountain_peak": "https://images.unsplash.com/photo-1508789454646-bef72439f197?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "alps_switchbacks": "https://images.unsplash.com/photo-1779744706434-c911a312359c?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "misty_climb": "https://images.unsplash.com/photo-1788064381248-493e0c77fdea?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "rocky_pass": "https://images.unsplash.com/photo-1768935452630-4c9aafcbd172?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "forest_climb": "https://images.unsplash.com/photo-1776899777998-2b56926792cd?crop=entropy&cs=srgb&fm=jpg&q=85"
+  },
+  "3d_and_map_libraries": {
+    "leaflet": "Leaflet.js + react-leaflet for map canvas, custom L.divIcon for neon alpine elevation markers",
+    "carto_dark_tiles": "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    "esri_satellite_tiles": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    "recharts": "Recharts AreaChart, BarChart, and PieChart for telemetry visuals with custom dark tooltips"
+  }
+}

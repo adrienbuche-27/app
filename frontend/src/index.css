@@ -1,0 +1,184 @@
+/* Fonts - Outfit (heading), Inter (body), JetBrains Mono (telemetry) */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* Leaflet stylesheet */
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --vs-bg: #0B0F17;
+  --vs-card: #161E2E;
+  --vs-card-hover: #1D283A;
+  --vs-border: #1E293B;
+  --vs-border-hi: #334155;
+  --vs-orange: #FF5722;
+  --vs-orange-glow: rgba(255, 87, 34, 0.28);
+  --vs-emerald: #10B981;
+  --vs-emerald-glow: rgba(16, 185, 129, 0.22);
+  --vs-amber: #F59E0B;
+  --vs-text: #F8FAFC;
+  --vs-text-2: #94A3B8;
+  --vs-text-3: #64748B;
+}
+
+html, body, #root {
+  background: var(--vs-bg);
+  color: var(--vs-text);
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: radial-gradient(1200px 600px at 90% -10%, rgba(255,87,34,0.08), transparent 60%),
+              radial-gradient(900px 500px at -10% 20%, rgba(16,185,129,0.06), transparent 60%),
+              var(--vs-bg);
+}
+
+.font-display { font-family: 'Outfit', 'Cabinet Grotesk', system-ui, sans-serif; }
+.font-mono-tel { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+
+/* Shadcn tokens - dark mode */
+@layer base {
+  :root {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 39% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 39% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 15 100% 57%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 15 100% 57%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+/* Leaflet custom marker */
+.vs-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--vs-text);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  pointer-events: auto;
+}
+.vs-marker .pin {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.9);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.6), 0 0 18px currentColor;
+}
+.vs-marker.conquered { color: var(--vs-emerald); }
+.vs-marker.missing { color: var(--vs-amber); }
+.vs-marker .label {
+  margin-top: 2px;
+  background: rgba(11,15,23,0.85);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.08);
+  white-space: nowrap;
+}
+
+/* Leaflet popup dark */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #0f172a !important;
+  color: var(--vs-text) !important;
+  border: 1px solid var(--vs-border) !important;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important;
+}
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  font-family: 'Inter', sans-serif !important;
+}
+.leaflet-container {
+  background: #0B0F17;
+  border-radius: 14px;
+}
+.leaflet-control-attribution {
+  background: rgba(11,15,23,0.75) !important;
+  color: #64748B !important;
+}
+.leaflet-control-attribution a { color: #94A3B8 !important; }
+.leaflet-bar a {
+  background: #0f172a !important;
+  color: #F8FAFC !important;
+  border-color: #1E293B !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0B0F17; }
+::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* Selection */
+::selection { background: rgba(255,87,34,0.35); color: #fff; }
+
+/* Grid grain overlay */
+.grain::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+}
+
+/* Kinetic ticker */
+@keyframes ticker-slide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-track { animation: ticker-slide 40s linear infinite; }
+
+/* Utility */
+.card-vs {
+  background: var(--vs-card);
+  border: 1px solid var(--vs-border);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  transition: transform 0.25s ease, box-shadow 0.3s ease, border-color 0.25s ease;
+}
+.card-vs:hover {
+  box-shadow: 0 8px 30px rgba(255,87,34,0.15);
+  border-color: var(--vs-border-hi);
+}
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+}
+.pill-emerald { background: rgba(16,185,129,0.10); color: #34d399; border: 1px solid rgba(16,185,129,0.30); }
+.pill-amber { background: rgba(245,158,11,0.10); color: #fbbf24; border: 1px solid rgba(245,158,11,0.30); }
+.pill-orange { background: rgba(255,87,34,0.10); color: #ff7a4d; border: 1px solid rgba(255,87,34,0.30); }
+.pill-slate { background: rgba(148,163,184,0.10); color: #cbd5e1; border: 1px solid rgba(148,163,184,0.25); }

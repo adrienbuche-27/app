@@ -1,0 +1,31 @@
+{
+  "summary": "Smoke-tested VeloSummit backend and frontend end-to-end via public preview URL. All 8 backend endpoints (famous-cols, summits CRUD, missing-cols, stats, upload, photos) return correct data. Frontend renders all 5 tabs with correct data-testids; Map shows Leaflet+Esri tiles with 15 markers and filter buttons; Add Summit dialog creates a summit that appears in list, updates stats & ascended pill; delete via confirm-delete works; Stats KPIs, Everest progress, and 3 Recharts render; Famous Cols catalog shows 14 quicklog buttons (1 already conquered); Missing Matrix shows 14 cols matching backend.",
+  "tested_scope": ["backend", "frontend", "integration"],
+  "passed": [
+    "GET /api/famous-cols returns 15 curated cols (first: Col du Galibier 2642m)",
+    "POST /api/summits creates summit with all fields, returns id",
+    "GET /api/summits lists summits (sorted desc)",
+    "PUT /api/summits/{id} updates and returns updated payload",
+    "DELETE /api/summits/{id} returns 200 first, 404 second time",
+    "GET /api/missing-cols excludes cols with matching famous_col_id (count=14 after creating galibier summit)",
+    "GET /api/stats returns total_summits, total_elevation_m, total_distance_km, highest_peak, everests_climbed, by_month, by_year correctly computed",
+    "POST /api/upload accepts PNG multipart, returns path starting with 'velosummit/photos/'",
+    "GET /api/photos/{path} returns image bytes with content-type image/png",
+    "Frontend loads with header (VELO.SUMMIT logo, 5 nav tabs, ascended pill, log-summit-btn)",
+    "Map tab renders Leaflet .leaflet-container with 18 tiles loaded and all 3 map-filter buttons",
+    "Add Summit dialog opens, has famous-col-select, save-summit-btn; new summit persists and updates ascended pill (2642 -> 3876 m)",
+    "My Summits tab shows 2 summit cards after add; delete flow triggers confirm-delete AlertDialog and removes card",
+    "Stats tab shows stat-total-summits, stat-total-elevation, stat-total-distance, stat-highest, everest-progress, chart-cumulative, chart-per-month, chart-per-year",
+    "Famous Cols tab has catalog-search and 14 quicklog-* buttons (1 already conquered)",
+    "Missing Matrix tab renders 14 cols grouped by category matching backend"
+  ],
+  "failed": [
+    {"area": "frontend a11y (minor)", "issue": "DialogContent missing Description/aria-describedby causes Radix warning in console", "evidence": "[warning] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}", "priority": "LOW"}
+  ],
+  "action_items": [
+    "Optional: Add <DialogDescription> or aria-describedby to AddSummitDialog to silence Radix a11y warning (non-blocking)."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
