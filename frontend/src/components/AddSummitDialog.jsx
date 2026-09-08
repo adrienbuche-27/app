@@ -94,7 +94,7 @@ export default function AddSummitDialog({ open, onOpenChange, famousCols, onCrea
         lng: Number(form.lng),
         duration_minutes: form.duration_minutes ? Number(form.duration_minutes) : null,
       };
-      if (editSummit) {
+      if (editSummit && editSummit.id) {
         await api.updateSummit(editSummit.id, payload);
         toast.success("Summit updated");
       } else {
@@ -118,7 +118,7 @@ export default function AddSummitDialog({ open, onOpenChange, famousCols, onCrea
       >
         <DialogHeader>
           <DialogTitle className="font-display text-2xl tracking-tight">
-            {editSummit ? "Edit Summit" : "Log a New Summit"}
+            {editSummit && editSummit.id ? "Edit Summit" : "Log a New Summit"}
           </DialogTitle>
           <DialogDescription className="text-slate-400 text-sm">
             Record a conquered col or prefill from the legendary catalog.
@@ -226,7 +226,7 @@ export default function AddSummitDialog({ open, onOpenChange, famousCols, onCrea
               className="bg-orange-500 hover:bg-orange-400 text-white font-semibold"
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              {editSummit ? "Update Summit" : "Log Summit"}
+              {editSummit && editSummit.id ? "Update Summit" : "Log Summit"}
             </Button>
           </div>
         </form>

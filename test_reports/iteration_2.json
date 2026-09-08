@@ -1,0 +1,15 @@
+{
+  "summary": "Verified bug fix for POST vs PUT branching in AddSummitDialog. Network-inspected 4 flows: Mark as Conquered (Famous Cols), Plan ascent (Missing Matrix), Edit existing summit, and header Log Summit. All routed to correct HTTP method. UI reflected changes: col moved from Missing Matrix into My Summits, ascended pill incremented (1,234 -> 5,792 m). Dialog title correctly shows 'Log a New Summit' with CTA 'Log Summit' when editSummit lacks id, and 'Edit Summit' / 'Update Summit' when it has id.",
+  "tested_scope": ["frontend", "integration"],
+  "passed": [
+    "Mark as Conquered on Famous Cols (col-du-galibier) opens dialog with prefilled name 'Col du Galibier', title 'Log a New Summit', CTA 'Log Summit'; submit fires POST /api/summits (no PUT); dialog closes; col removed from Missing Matrix; appears in My Summits",
+    "Plan ascent on Missing Matrix (missing-quicklog-sa-calobra) opens dialog with CTA 'Log Summit'; submit fires POST /api/summits (no PUT)",
+    "Edit existing summit via pencil icon shows CTA 'Update Summit'; submit fires PUT /api/summits/{id} (no POST)",
+    "Header Log Summit button (empty form) with manually entered fields fires POST /api/summits and new summit appears in list; ascended pill updates"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
