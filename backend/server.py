@@ -1,5 +1,7 @@
 import os
 import uuid
+import math
+import asyncio
 import logging
 from pathlib import Path
 from datetime import datetime, timezone
@@ -21,6 +23,9 @@ load_dotenv(ROOT_DIR / ".env")
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # ---- Object Storage ---------------------------------------------------------
 STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
@@ -63,6 +68,59 @@ def get_object(path: str):
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 
+# ---- Elevation profile (Open-Elevation) -------------------------------------
+OPEN_ELEV_URL = "https://api.open-elevation.com/api/v1/lookup"
+PROFILE_SAMPLES = 60
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlambda / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+def _sample_points(start_lat: float, start_lng: float, end_lat: float, end_lng: float, n: int = PROFILE_SAMPLES):
+    """Great-circle sampling; n>=2. Returns list[(lat,lng)]."""
+    pts = []
+    for i in range(n):
+        t = i / (n - 1)
+        lat = start_lat + (end_lat - start_lat) * t
+        lng = start_lng + (end_lng - start_lng) * t
+        pts.append((lat, lng))
+    return pts
+
+
+def _fetch_profile_sync(start_lat: float, start_lng: float, end_lat: float, end_lng: float):
+    """Blocking Open-Elevation call. Returns (profile_list, status)."""
+    try:
+        pts = _sample_points(start_lat, start_lng, end_lat, end_lng)
+        payload = {"locations": [{"latitude": la, "longitude": ln} for la, ln in pts]}
+        resp = requests.post(OPEN_ELEV_URL, json=payload, timeout=25)
+        resp.raise_for_status()
+        results = resp.json().get("results", [])
+        if len(results) < 2:
+            return [], "failed"
+        total_km = _haversine_km(start_lat, start_lng, end_lat, end_lng)
+        profile = []
+        for i, r in enumerate(results):
+            d = total_km * (i / (len(results) - 1))
+            profile.append({
+                "distance_km": round(d, 3),
+                "elevation_m": round(float(r.get("elevation") or 0), 1),
+            })
+        return profile, "ok"
+    except Exception as e:
+        logger.warning(f"Open-Elevation fetch failed: {e}")
+        return [], "failed"
+
+
+async def fetch_profile(start_lat, start_lng, end_lat, end_lng):
+    return await asyncio.to_thread(_fetch_profile_sync, start_lat, start_lng, end_lat, end_lng)
+
+
 # ---- Models -----------------------------------------------------------------
 class SummitCreate(BaseModel):
     name: str
@@ -74,15 +132,21 @@ class SummitCreate(BaseModel):
     max_gradient: Optional[float] = None
     lat: float
     lng: float
-    date_climbed: Optional[str] = None  # ISO string YYYY-MM-DD
+    date_climbed: Optional[str] = None
     duration_minutes: Optional[int] = None
     notes: Optional[str] = None
     photo_path: Optional[str] = None
     famous_col_id: Optional[str] = None
+    # Climb side
+    side_name: Optional[str] = None
+    start_lat: Optional[float] = None
+    start_lng: Optional[float] = None
 
 
 class Summit(SummitCreate):
     id: str
+    profile: Optional[List[dict]] = None
+    profile_status: Optional[str] = None  # ok | failed | none
 
 
 # ---- App --------------------------------------------------------------------
@@ -94,9 +158,9 @@ api_router = APIRouter(prefix="/api")
 async def startup():
     try:
         init_storage()
-        logging.info("Object storage initialized")
+        logger.info("Object storage initialized")
     except Exception as e:
-        logging.error(f"Storage init failed: {e}")
+        logger.error(f"Storage init failed: {e}")
 
 
 @api_router.get("/")
@@ -104,45 +168,67 @@ async def root():
     return {"message": "VeloSummit API"}
 
 
-# ---- Famous cols ------------------------------------------------------------
 @api_router.get("/famous-cols")
 async def list_famous_cols():
     return FAMOUS_COLS
 
 
 # ---- Summits CRUD -----------------------------------------------------------
-def _serialize(doc: dict) -> dict:
+def _clean(doc: dict) -> dict:
     doc.pop("_id", None)
     return doc
 
 
-@api_router.get("/summits", response_model=List[Summit])
+async def _apply_profile(doc: dict):
+    """If start_lat/lng present, fetch elevation profile and store on doc."""
+    if doc.get("start_lat") is not None and doc.get("start_lng") is not None:
+        profile, status = await fetch_profile(
+            doc["start_lat"], doc["start_lng"], doc["lat"], doc["lng"]
+        )
+        doc["profile"] = profile
+        doc["profile_status"] = status
+    else:
+        doc["profile"] = None
+        doc["profile_status"] = "none"
+
+
+@api_router.get("/summits")
 async def list_summits():
     docs = await db.summits.find({}, {"_id": 0}).sort("date_climbed", -1).to_list(2000)
     return docs
 
 
-@api_router.post("/summits", response_model=Summit)
+@api_router.post("/summits")
 async def create_summit(payload: SummitCreate):
-    summit_id = str(uuid.uuid4())
     doc = payload.model_dump()
-    doc["id"] = summit_id
+    doc["id"] = str(uuid.uuid4())
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    await _apply_profile(doc)
     await db.summits.insert_one(doc)
-    return _serialize(doc)
+    return _clean(doc)
 
 
-@api_router.put("/summits/{summit_id}", response_model=Summit)
+@api_router.put("/summits/{summit_id}")
 async def update_summit(summit_id: str, payload: SummitCreate):
-    update = payload.model_dump()
-    result = await db.summits.find_one_and_update(
-        {"id": summit_id},
-        {"$set": update},
-        return_document=True,
-    )
-    if not result:
+    existing = await db.summits.find_one({"id": summit_id}, {"_id": 0})
+    if not existing:
         raise HTTPException(404, "Summit not found")
-    return _serialize(result)
+    update = payload.model_dump()
+    # Re-fetch profile only if start point OR summit point changed
+    needs_profile_refresh = (
+        update.get("start_lat") != existing.get("start_lat")
+        or update.get("start_lng") != existing.get("start_lng")
+        or update.get("lat") != existing.get("lat")
+        or update.get("lng") != existing.get("lng")
+    )
+    if needs_profile_refresh:
+        await _apply_profile(update)
+    else:
+        update["profile"] = existing.get("profile")
+        update["profile_status"] = existing.get("profile_status")
+    await db.summits.update_one({"id": summit_id}, {"$set": update})
+    update["id"] = summit_id
+    return update
 
 
 @api_router.delete("/summits/{summit_id}")
@@ -153,17 +239,33 @@ async def delete_summit(summit_id: str):
     return {"ok": True}
 
 
-# ---- Missing climbs (comparison) --------------------------------------------
+@api_router.post("/summits/{summit_id}/refresh-profile")
+async def refresh_profile(summit_id: str):
+    doc = await db.summits.find_one({"id": summit_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Summit not found")
+    if doc.get("start_lat") is None or doc.get("start_lng") is None:
+        raise HTTPException(400, "Summit has no start point — set a climb side first")
+    profile, status = await fetch_profile(
+        doc["start_lat"], doc["start_lng"], doc["lat"], doc["lng"]
+    )
+    await db.summits.update_one(
+        {"id": summit_id},
+        {"$set": {"profile": profile, "profile_status": status}},
+    )
+    return {"profile": profile, "profile_status": status}
+
+
+# ---- Missing climbs ---------------------------------------------------------
 @api_router.get("/missing-cols")
 async def missing_cols():
     summits = await db.summits.find({}, {"_id": 0, "famous_col_id": 1, "name": 1}).to_list(2000)
     done_ids = {s.get("famous_col_id") for s in summits if s.get("famous_col_id")}
     done_names = {s["name"].lower().strip() for s in summits if s.get("name")}
-    missing = [
+    return [
         col for col in FAMOUS_COLS
         if col["id"] not in done_ids and col["name"].lower().strip() not in done_names
     ]
-    return missing
 
 
 # ---- Statistics -------------------------------------------------------------
@@ -247,8 +349,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
 @app.on_event("shutdown")

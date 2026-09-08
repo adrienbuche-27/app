@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, LayersControl } from "react-leaflet";
 import L from "leaflet";
 import { photoUrl } from "../lib/api";
+import ElevationProfile from "./ElevationProfile";
 
 const conqueredIcon = (elev) =>
   L.divIcon({
@@ -161,6 +162,20 @@ export default function MapView({ summits, famousCols, missingIds }) {
                     </div>
                   )}
                 </div>
+                {p.data.side_name && (
+                  <div className="mt-2 text-[11px] font-mono-tel uppercase tracking-wider text-orange-300">
+                    via {p.data.side_name}
+                  </div>
+                )}
+                {p.type === "conquered" && p.data.profile && p.data.profile.length > 1 && (
+                  <div className="mt-3 rounded-lg bg-slate-900/60 border border-slate-800 p-2">
+                    <ElevationProfile
+                      profile={p.data.profile}
+                      profile_status={p.data.profile_status}
+                      size="sm"
+                    />
+                  </div>
+                )}
                 {p.data.photo_path && (
                   <img
                     alt={p.data.name}

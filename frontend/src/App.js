@@ -73,18 +73,22 @@ export default function App() {
   };
 
   const openFromCol = (col) => {
+    const firstSide = col.sides?.[0];
     setEditSummit({
       name: col.name,
       region: col.region,
       country: col.country,
       elevation: col.elevation,
-      distance_km: col.distance_km,
-      avg_gradient: col.avg_gradient,
-      max_gradient: col.max_gradient,
       lat: col.lat,
       lng: col.lng,
       famous_col_id: col.id,
       date_climbed: new Date().toISOString().slice(0, 10),
+      side_name: firstSide?.name || "",
+      start_lat: firstSide?.start_lat ?? "",
+      start_lng: firstSide?.start_lng ?? "",
+      distance_km: firstSide?.distance_km ?? "",
+      avg_gradient: firstSide?.avg_gradient ?? "",
+      max_gradient: firstSide?.max_gradient ?? "",
     });
     setPrefillCol(col);
     setDialogOpen(true);
@@ -147,7 +151,7 @@ export default function App() {
               title="My Conquered Summits"
               sub={`${summits.length} peak${summits.length === 1 ? "" : "s"} in the book`}
             />
-            <SummitsList summits={summits} onEdit={openEdit} onDelete={setDeleteTarget} />
+            <SummitsList summits={summits} onEdit={openEdit} onDelete={setDeleteTarget} onRefreshed={refresh} />
           </div>
         )}
         {active === "stats" && (

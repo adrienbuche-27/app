@@ -19,21 +19,23 @@
 - Avid cyclist logging conquered mountain passes and chasing legendary cols worldwide.
 
 ## What's implemented (2026-02)
-- 15 curated legendary cols dataset (Galibier, Ventoux, Stelvio, Tourmalet, Alpe d'Huez, Gavia, Mortirolo, Grossglockner, Teide, Pikes Peak, Iseran, Agnel, Angliru, Zoncolan, Sa Calobra)
+- 15 curated legendary cols dataset with **2–3 climb sides each** (Ventoux/Bédoin/Malaucène/Sault, Stelvio/Prato/Bormio/Umbrail, Tourmalet W/E, Galibier N/S, Zoncolan 3 sides, etc.)
 - Full summit CRUD with photo upload via Emergent Object Storage
-- Interactive dark Leaflet map with conquered/missing/all filters
-- Add/Edit summit dialog with "prefill from famous col" dropdown
+- **Live elevation profiles** — every summit auto-fetches 60-point altitude-vs-distance profile from Open-Elevation on save; cached in Mongo, retry button on failure
+- Interactive dark Leaflet map with conquered/missing/all filters; popups now show `via <side>` label and inline elevation profile chart
+- Add/Edit summit dialog with "Climb from" section — dropdown of catalog sides, or free-text + optional start lat/lng for custom summits
 - Statistics dashboard (KPIs, Everest scale, cumulative area chart, per-month + per-year bar charts, highest-peak card)
-- Famous Cols catalog with search, region filter, quicklog CTA
+- Famous Cols catalog with search, region filter, side pills, quicklog CTA
 - Missing Climb Matrix grouped by HC/Cat.1 categories
 - Kinetic ticker with iconic col facts
-- 100% backend + frontend testing pass (iteration_1)
+- Iterations 1 → 3 all 100% pass (frontend + backend + Open-Elevation integration)
 
 ## Backlog (P1)
-- Elevation profile chart per summit (fetch from Open-Elevation API)
-- Strava GPX/FIT import
+- GPX/FIT upload to replace great-circle profile with real route line on map
+- Color-coded gradient heatmap on the elevation profile (500m buckets)
+- Compare two sides of the same col side-by-side
 - Shareable "Summit Passport" card
-- Draw route lines on map when GPS track is uploaded
+- Strava sync
 
 ## P2
 - Multi-user auth (Emergent Google login)

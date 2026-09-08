@@ -1,8 +1,30 @@
-import React from "react";
-import { Mountain, Trash2, Pencil, MapPin } from "lucide-react";
-import { photoUrl } from "../lib/api";
+import React, { useState } from "react";
+import { Mountain, Trash2, Pencil, MapPin, Route } from "lucide-react";
+import { photoUrl, api } from "../lib/api";
+import ElevationProfile from "./ElevationProfile";
+import { toast } from "sonner";
 
-export default function SummitsList({ summits, onEdit, onDelete }) {
+export default function SummitsList({ summits, onEdit, onDelete, onRefreshed }) {
+  const [busy, setBusy] = useState(null);
+
+  const refresh = async (s) => {
+    if (!s.start_lat || !s.start_lng) {
+      toast.error("Add a climb side first (Edit → Climb from)");
+      onEdit(s);
+      return;
+    }
+    setBusy(s.id);
+    try {
+      await api.refreshProfile(s.id);
+      toast.success("Profile refreshed");
+      onRefreshed?.();
+    } catch {
+      toast.error("Profile fetch failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (!summits.length) {
     return (
       <div
@@ -24,7 +46,7 @@ export default function SummitsList({ summits, onEdit, onDelete }) {
         <article
           key={s.id}
           data-testid={`summit-card-${s.id}`}
-          className="card-vs overflow-hidden group"
+          className="card-vs overflow-hidden group flex flex-col"
         >
           <div className="relative h-40 bg-gradient-to-br from-slate-800 to-slate-950">
             {s.photo_path ? (
@@ -56,7 +78,16 @@ export default function SummitsList({ summits, onEdit, onDelete }) {
               </div>
             </div>
           </div>
-          <div className="p-4">
+          <div className="p-4 flex-1 flex flex-col">
+            {s.side_name && (
+              <div
+                data-testid={`side-badge-${s.id}`}
+                className="pill pill-orange w-fit mb-3"
+              >
+                <Route className="w-3 h-3" />
+                {s.side_name}
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-2 font-mono-tel text-xs">
               <Stat label="Grade" value={s.avg_gradient ? `${s.avg_gradient}%` : "—"} />
               <Stat label="Distance" value={s.distance_km ? `${s.distance_km}km` : "—"} />
@@ -65,7 +96,21 @@ export default function SummitsList({ summits, onEdit, onDelete }) {
                 value={s.duration_minutes ? formatDur(s.duration_minutes) : "—"}
               />
             </div>
-            <div className="flex items-center justify-between mt-4 text-xs text-slate-500">
+
+            <div className="mt-4">
+              <ElevationProfile
+                profile={s.profile}
+                profile_status={s.profile_status}
+                size="sm"
+                canRetry
+                onRetry={() => refresh(s)}
+              />
+              {busy === s.id && (
+                <div className="text-[11px] text-orange-400 mt-1 font-mono-tel">Fetching…</div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between mt-auto pt-4 text-xs text-slate-500">
               <span>{s.date_climbed || "—"}</span>
               <div className="flex gap-2">
                 <button

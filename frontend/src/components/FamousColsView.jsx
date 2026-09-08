@@ -76,10 +76,28 @@ export default function FamousColsView({ cols, conqueredIds, onQuickLog }) {
               </div>
               <div className="mt-4 grid grid-cols-4 gap-2 font-mono-tel text-xs">
                 <Metric label="Elev" value={`${c.elevation}m`} accent="orange" />
-                <Metric label="Dist" value={`${c.distance_km}km`} />
-                <Metric label="Grade" value={`${c.avg_gradient}%`} />
+                <Metric
+                  label="Dist"
+                  value={c.sides?.[0]?.distance_km ? `${c.sides[0].distance_km}km` : "—"}
+                />
+                <Metric
+                  label="Grade"
+                  value={c.sides?.[0]?.avg_gradient ? `${c.sides[0].avg_gradient}%` : "—"}
+                />
                 <Metric label="Cat" value={c.category} />
               </div>
+              {c.sides && c.sides.length > 1 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {c.sides.map((s) => (
+                    <span
+                      key={s.name}
+                      className="text-[10px] font-mono-tel uppercase tracking-wider text-slate-400 bg-slate-900 border border-slate-800 rounded-full px-2 py-0.5"
+                    >
+                      {s.name}
+                    </span>
+                  ))}
+                </div>
+              )}
               <p className="mt-3 text-xs text-slate-400 italic">{c.history}</p>
               {!done && (
                 <button
