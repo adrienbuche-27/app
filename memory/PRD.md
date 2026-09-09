@@ -37,9 +37,19 @@
 - Preset side pick auto-fills Distance/Avg grad/Max grad/start point into the dedicated boxes, fully editable
 - Dropdown selects reliably via native click (no force needed)
 
+## Update 2026-06 — GPX Upload (real climb line) (iteration 6, 100% pass — backend 6/6, frontend 8/8)
+- New "Real climb from GPX (optional)" section on the Log/Edit Summit form (`AddSummitDialog.jsx`)
+- Backend `POST /api/gpx/parse` (gpxpy) parses a .gpx, isolates the climb: top = point nearest summit, base = lowest point before it; downsamples to ≤1500 pts; returns points + auto start/end indices + has_elevation
+- `GpxTrimmer.jsx`: mini Leaflet map (full ride faint grey + isolated climb orange, green base / amber top dots), dual-thumb range slider to trim, live stats (distance / elev gain / avg & max gradient computed in `lib/gpx.js`)
+- Trimming updates the map line, stats and the editable Distance/Avg grad/Max grad boxes live; preset auto-fill behaviour preserved
+- On save, `route` (climb line) + `profile` (from real GPX elevations) stored on the summit; `has_gpx` flag set; `_apply_profile` keeps the GPX profile and skips Open-Elevation
+- Main map (`MapView.jsx`) draws the orange route polyline for GPX summits; popup shows a "GPX route" badge + elevation profile
+- Edit mode shows GPX badge with Replace / Remove (raw file not retained); Remove falls back to straight-line profile
+- Scope: GPX only (FIT deferred), one file per summit; files without elevation draw the line but no profile
+
 ## Backlog (P1)
 - Geographic map heatmap of visited summits (deferred from v1 stats)
-- GPX/FIT upload to replace great-circle profile with real route line on map
+- FIT file upload (binary format) — follow-up to GPX
 - Color-coded gradient heatmap on the elevation profile (500m buckets)
 - Compare two sides of the same col side-by-side
 - Shareable "Summit Passport" card

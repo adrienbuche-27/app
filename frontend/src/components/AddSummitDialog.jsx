@@ -19,7 +19,9 @@ import {
 } from "./ui/select";
 import { api } from "../lib/api";
 import { toast } from "sonner";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, FileUp, Route as RouteIcon, X } from "lucide-react";
+import { computeSegment } from "../lib/gpx";
+import GpxTrimmer from "./GpxTrimmer";
 
 const emptyForm = {
   name: "",
@@ -39,6 +41,9 @@ const emptyForm = {
   side_name: "",
   start_lat: "",
   start_lng: "",
+  has_gpx: false,
+  route: null,
+  profile: null,
 };
 
 const MANUAL_SIDE = "__manual__";
@@ -54,6 +59,9 @@ export default function AddSummitDialog({
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isManual, setIsManual] = useState(false);
+  const [gpx, setGpx] = useState(null); // { points, has_elevation }
+  const [range, setRange] = useState([0, 0]);
+  const [gpxLoading, setGpxLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -64,8 +72,30 @@ export default function AddSummitDialog({
       const isPreset =
         initial.side_name && sides.some((s) => s.name === initial.side_name);
       setIsManual(Boolean(initial.side_name) && !isPreset);
+      setGpx(null);
+      setRange([0, 0]);
     }
   }, [open, editSummit, famousCols]);
+
+  // Live-computed climb segment from the parsed GPX + trim range.
+  const seg = useMemo(
+    () => (gpx ? computeSegment(gpx.points, range[0], range[1]) : null),
+    [gpx, range]
+  );
+
+  // When the segment changes (upload or trim), fill the editable boxes.
+  useEffect(() => {
+    if (!seg) return;
+    setForm((f) => ({
+      ...f,
+      distance_km: seg.distance_km,
+      avg_gradient: seg.avg_gradient ?? "",
+      max_gradient: seg.max_gradient ?? "",
+      route: seg.route,
+      profile: seg.profile,
+      has_gpx: true,
+    }));
+  }, [seg]);
 
   const bind = (key) => ({
     value: form[key] ?? "",
@@ -137,6 +167,34 @@ export default function AddSummitDialog({
     }
   };
 
+  const handleGpx = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting same file
+    if (!file) return;
+    if (!form.lat || !form.lng) {
+      toast.error("Set the summit latitude & longitude first");
+      return;
+    }
+    setGpxLoading(true);
+    try {
+      const res = await api.parseGpx(file, Number(form.lat), Number(form.lng));
+      setGpx({ points: res.points, has_elevation: res.has_elevation });
+      setRange([res.auto_start_idx, res.auto_end_idx]);
+      toast.success("GPX loaded — climb auto-detected");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not read GPX file");
+    } finally {
+      setGpxLoading(false);
+    }
+  };
+
+  const removeGpx = () => {
+    setGpx(null);
+    setRange([0, 0]);
+    setForm((f) => ({ ...f, has_gpx: false, route: null, profile: null }));
+    toast.info("GPX removed — profile falls back to start point");
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.elevation || !form.lat || !form.lng) {
@@ -159,6 +217,7 @@ export default function AddSummitDialog({
         start_lng: num(form.start_lng),
       };
       const willFetchProfile =
+        !form.has_gpx &&
         payload.start_lat !== null && payload.start_lng !== null &&
         (!editSummit ||
           !editSummit.id ||
@@ -307,6 +366,82 @@ export default function AddSummitDialog({
                 </p>
               )}
             </div>
+          </div>
+
+          {/* GPX real climb */}
+          <div className="md:col-span-2 rounded-xl border border-slate-800 p-4 bg-slate-900/40">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs uppercase tracking-wider text-orange-400 font-mono-tel">
+                Real climb from GPX (optional)
+              </Label>
+              {(gpx || form.has_gpx) && (
+                <span
+                  data-testid="gpx-badge"
+                  className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-mono-tel uppercase tracking-wider text-orange-300"
+                >
+                  <RouteIcon className="w-3 h-3" /> GPX route
+                </span>
+              )}
+            </div>
+
+            {gpx ? (
+              <GpxTrimmer
+                points={gpx.points}
+                range={range}
+                onRangeChange={setRange}
+                seg={seg}
+                hasElevation={gpx.has_elevation}
+                onRemove={removeGpx}
+              />
+            ) : form.has_gpx ? (
+              <div className="mt-2 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2.5 flex items-center justify-between gap-3">
+                <p className="text-xs text-slate-300">
+                  A recorded GPX route is attached — its real line and profile are saved.
+                </p>
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="cursor-pointer text-[11px] text-orange-400 hover:text-orange-300 font-mono-tel uppercase tracking-wider flex items-center gap-1">
+                    <FileUp className="w-3.5 h-3.5" /> Replace
+                    <input
+                      data-testid="input-gpx-replace"
+                      type="file"
+                      accept=".gpx"
+                      onChange={handleGpx}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    data-testid="gpx-remove-existing-btn"
+                    onClick={removeGpx}
+                    className="text-[11px] text-slate-400 hover:text-red-300 flex items-center gap-1"
+                  >
+                    <X className="w-3.5 h-3.5" /> Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="mt-2 flex items-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-slate-700 bg-slate-900/60 hover:bg-slate-900 cursor-pointer">
+                {gpxLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-orange-400" />
+                ) : (
+                  <FileUp className="w-4 h-4 text-slate-400" />
+                )}
+                <span className="text-xs text-slate-400">
+                  Upload a .gpx to draw your real route and profile
+                </span>
+                <input
+                  data-testid="input-gpx"
+                  type="file"
+                  accept=".gpx"
+                  onChange={handleGpx}
+                  className="hidden"
+                />
+              </label>
+            )}
+            <p className="text-[11px] text-slate-500 mt-2">
+              We isolate the climb that ends at this summit and rebuild the elevation
+              profile from the real GPX elevations. Set latitude & longitude first.
+            </p>
           </div>
 
           <Field label="Elevation (m)" required>

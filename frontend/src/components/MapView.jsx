@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, LayersControl } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { photoUrl } from "../lib/api";
 import ElevationProfile from "./ElevationProfile";
@@ -125,6 +125,16 @@ export default function MapView({ summits, famousCols, missingIds }) {
           </LayersControl.BaseLayer>
         </LayersControl>
 
+        {points.map((p) =>
+          p.type === "conquered" && p.data.route && p.data.route.length > 1 ? (
+            <Polyline
+              key={`route-${p.key}`}
+              positions={p.data.route.map((r) => [r.lat, r.lng])}
+              pathOptions={{ color: "#FF5722", weight: 4, opacity: 0.9 }}
+            />
+          ) : null
+        )}
+
         {points.map((p) => (
           <Marker
             key={p.key}
@@ -165,6 +175,11 @@ export default function MapView({ summits, famousCols, missingIds }) {
                 {p.data.side_name && (
                   <div className="mt-2 text-[11px] font-mono-tel uppercase tracking-wider text-orange-300">
                     via {p.data.side_name}
+                  </div>
+                )}
+                {p.data.has_gpx && (
+                  <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-mono-tel uppercase tracking-wider text-orange-300">
+                    GPX route
                   </div>
                 )}
                 {p.type === "conquered" && p.data.profile && p.data.profile.length > 1 && (

@@ -1,55 +1,76 @@
-# Fix & Improve the "Climb From" Field
+# GPX Upload — Draw the Real Climb on the Map
 
-## Problem
-On the Log/Edit Summit form, the "Climb From" dropdown does not work reliably, and it
-only appears after a famous col is selected. It also crams distance and gradient into the
-dropdown option text. The goal is a dropdown that always works, always shows, lists only
-side names, lets a manual entry be typed, and leaves the numbers to the existing boxes.
+## Goal
+Let a summit carry a real recorded track (GPX file) so the map draws the actual road
+you rode up instead of a straight line from base to summit — and so the elevation
+profile reflects the real ascent. Because a GPX often covers a whole ride (café stop,
+descent, a second climb), the app will isolate just the climb that belongs to this
+summit and use that.
 
-## What will change
+## How it works for you
+1. On the Log / Edit Summit form there is a new "Upload GPX" control.
+2. You pick a `.gpx` file exported from Strava, Garmin, Komoot, Wahoo, etc.
+3. The app reads the track, finds the climb that ends at this summit, and isolates it
+   from the rest of the ride.
+4. You see a preview: the isolated climb drawn on a mini map, plus its distance,
+   elevation gained and average gradient. If the auto-pick looks off, you can nudge the
+   start and end points (see "Trimming" below) until the climb is right.
+5. On save, that real climb line replaces the straight base→summit line on the main map,
+   and the elevation profile is rebuilt from the real GPX elevations (no more
+   Open-Elevation straight-line estimate for GPX summits).
 
-### 1. The dropdown always shows
-- The "Climb From" selector appears for every summit, whether or not it is tied to a
-  famous col.
-- Options shown are the side names only (e.g. "Bédoin", "Malaucène", "Valloire (north)").
-  No distance or gradient text inside the dropdown anymore.
+## Isolating the climb (the important part)
+The uploaded ride may be longer than the climb. The app isolates the climb like this:
+- It finds the point on the track nearest this summit's coordinates — that's the top.
+- It walks backwards from the top to the lowest point before the sustained ascent
+  begins — that's the base.
+- The stretch between base and top is "the climb"; everything else in the ride is set
+  aside.
 
-### 2. A "type your own" option
-- The dropdown includes a manual entry choice (e.g. "➕ Add my own side…").
-- Choosing it reveals a text box to type a custom side name (e.g. "east ridge, from
-  Chamonix").
-- When no famous col is selected, the dropdown still offers this manual entry so any
-  summit can have a named side.
+This auto-detection is a best-effort guess and can be imperfect (rolling approaches,
+false flats, GPS noise). So:
 
-### 3. Numbers live in the existing boxes
-- Distance (km) and Avg Gradient (%) are entered/edited in the boxes already on the form,
-  not inside the dropdown label.
-- When a preset side is picked, Distance and Avg Gradient (and Max Gradient, start point)
-  are auto-filled from the catalog as a convenience, and remain fully editable.
-- When a manual side is typed, those boxes stay as whatever is entered (blank unless typed).
+**Trimming (manual override).** The preview includes a simple two-handle range slider
+over the track. You can drag the start handle and the end handle to set exactly where
+the climb begins and ends. The map line, distance, elevation and gradient update live as
+you drag. Auto-detection just sets the handles' initial position.
 
-### 4. Start point kept for manual entries
-- The Start latitude / Start longitude boxes remain available for manual side entries.
-  These feed the elevation-profile lookup, so a hand-entered climb can still draw its
-  profile.
+## What the numbers do
+- Distance, elevation gained and average gradient computed from the isolated climb
+  **auto-fill the existing boxes** on the form and stay editable, same behaviour as
+  picking a preset side today.
+- Max gradient is estimated from the steepest stretch of the isolated climb.
 
-### 5. Fix the non-working dropdown
-- The selector will be made reliably clickable and selectable (the earlier overlay/interaction
-  issue that blocked it will be resolved) so a choice actually registers and updates the form.
+## What the map shows
+- The isolated climb is drawn as the route line for that summit (replacing the straight
+  line).
+- The rest of the ride (approach, descent, other climbs) is **not** shown — only the
+  climb. (Assumption; can instead show the discarded part as a faint grey line if you
+  prefer context.)
 
-## Behavior summary
-- Pick a famous col -> its sides fill the dropdown -> pick one -> name set, numbers/start
-  auto-filled and editable.
-- No famous col -> dropdown shows just the manual entry option -> type a side name -> fill
-  distance, gradient and start point yourself.
-- Either way, the numeric details always live in the dedicated boxes below, never inside
-  the dropdown.
+## Removing / replacing
+- A summit that has a GPX shows a small "GPX route" badge. You can upload a different
+  file to replace it, or remove it to fall back to the straight-line profile.
+
+## Scope
+- Works for both famous-col summits and your own custom summits.
+- Accepts standard `.gpx` track files with elevation data. Files without elevation still
+  draw the route line but can't build an elevation profile.
+- Only the climb segment's points are kept for drawing and the profile; the raw file
+  itself is not retained after parsing.
 
 ## Out of scope
-- No change to which famous cols exist, the map, stats, or any other screen.
-- The four previously deferred items (map heatmap, GPX/FIT upload, steepness heatmap,
-  summit passport) are not part of this change.
+- No `.fit` support in this round (FIT is a binary format; GPX first). Can follow later.
+- No auto-matching a GPX to an existing summit / bulk import — one file per summit form.
+- The other deferred items (map heatmap, steepness colour profile, summit passport) are
+  not part of this change.
 
-## Assumption
-- Preset sides auto-fill the numeric boxes but stay editable (per your choice), and the
-  manual-entry option is available on every summit form.
+## Decisions to confirm or push back on
+1. **Manual trimming included.** Auto-detect sets the start/end, and you can drag handles
+   to correct it. (Alternative: auto-only, no manual control — simpler but wrong more
+   often on messy rides.)
+2. **Only the climb is drawn**, the rest of the ride is discarded from view. (Alternative:
+   show the discarded portion as a faint line for context.)
+3. **GPX-derived distance/gradient overwrite the form boxes** (editable). (Alternative:
+   leave your typed numbers untouched and only draw the line.)
+4. **GPX only this round**, FIT later.

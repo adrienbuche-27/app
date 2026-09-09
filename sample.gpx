@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="test">
+ <trk><name>Ventoux ride</name><trkseg>
+  <trkpt lat="44.1225" lon="5.1806"><ele>300</ele></trkpt>
+  <trkpt lat="44.1300" lon="5.2000"><ele>500</ele></trkpt>
+  <trkpt lat="44.1400" lon="5.2200"><ele>800</ele></trkpt>
+  <trkpt lat="44.1500" lon="5.2400"><ele>1100</ele></trkpt>
+  <trkpt lat="44.1600" lon="5.2600"><ele>1500</ele></trkpt>
+  <trkpt lat="44.1741" lon="5.2783"><ele>1909</ele></trkpt>
+  <trkpt lat="44.1800" lon="5.2900"><ele>1700</ele></trkpt>
+  <trkpt lat="44.1900" lon="5.3000"><ele>1400</ele></trkpt>
+ </trkseg></trk>
+</gpx>

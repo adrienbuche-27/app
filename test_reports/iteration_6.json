@@ -1,0 +1,26 @@
+{
+  "summary": "Full backend + frontend verification of GPX upload feature. Backend: 6/6 pytest cases passed (parse with/without ele, malformed, empty -> 400, create summit with has_gpx persists route+profile+status='ok', update remove-GPX clears route). Frontend: verified upload flow end-to-end via Playwright — Log Summit dialog opens, guard toast when lat/lng missing prevents trimmer (verified), after filling lat/lng+name+elev the .gpx upload triggers /api/gpx/parse and GpxTrimmer appears with mini map + slider + 4 live stats (distance=9.74km, gain=1609m, avg=16.5%, max=20.6%). input-distance auto-synced with gpx-stat-distance. Trimming via keyboard ArrowRight on gpx-handle-start changed distance from 9.74km->6.03km and input-distance mirrored (6.03). Manual edit to input-avg-grad (9.9) worked afterward. Save persisted the summit with has_gpx=true, route_len=4, profile_len=4, profile_status='ok'. Map showed leaflet polyline for the GPX summit. Edit mode: gpx-badge, input-gpx-replace, gpx-remove-existing-btn all present; no re-trimmer shown (correct). Remove+Save cleared has_gpx and route=null on server. Regression: preset Mont Ventoux without GPX saved successfully with has_gpx=false, profile_status='ok', profile_len=60 (Open-Elevation still used). All ZZTEST_ data cleaned up.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_gpx_upload.py",
+    "/app/test_reports/pytest/gpx_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AddSummitDialog.jsx: the useEffect at L87-98 unconditionally overwrites distance_km/avg_gradient/max_gradient every time `seg` changes. That is what makes trimming update inputs — good — but it will also *revert* any manual edits the user makes while the trimmer is still mounted if `range` (and thus seg identity) changes again. Behaviour is acceptable per spec (trimming updates the boxes) but users editing distance/avg/max manually will silently lose their edits if they touch the slider afterward. Consider a debounce or explicit 'reset from GPX' button.",
+    "Backend /api/gpx/parse silently strips descent by picking top_idx = point nearest summit lat/lng; if a GPX loop passes the summit twice, only the *first* nearest match is picked (min() returns first). Not a bug in current sample but worth documenting.",
+    "GpxTrimmer FitBounds refits on every range change (positions dependency includes climbLine coords) — good UX but on very long GPX (>1500 pts capped by GPX_MAX_POINTS) may still cause many re-fits during slider drag. Not observed as a problem here.",
+    "server.py L193: profile_status='ok' assumed whenever has_gpx+profile provided by client — no server-side validation of profile array shape. A malicious client could persist any array. Low risk given no-auth app.",
+    "index.js ResizeObserver silencer: did NOT observe overlay this run, but prior iteration noted flake — still recommend disabling CRA devServer.client.overlay for defense in depth."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_gpx_upload.py",
+    "/app/test_reports/iteration_6.json"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% (all 8 review-request cases verified)"},
+  "seed_data_creation": "Created 2 ZZTEST_ summits (ZZTEST_GPX_Ventoux_UI + ZZTEST_Preset_Ventoux) and 2 more from pytest (ZZTEST_GPX_Ventoux, ZZTEST_GPX_Remove) — all deleted successfully. Two lingering TEST_ summits (TEST_CustomPeak, TEST_north face) from earlier iterations remain in DB but were not created by this run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "GPX feature works end-to-end. Backend /api/gpx/parse returns points, auto_start_idx, auto_end_idx, has_elevation as spec'd; auto_end_idx for the sample GPX is 5 (summit point) and auto_start_idx>=0 (0 in current impl since first point is lowest ele). Frontend GpxTrimmer renders, live stats + input mirroring work. Edit mode never re-parses raw file — shows badge+Replace+Remove only, correct per spec. Regression: non-GPX preset summit still hits Open-Elevation (profile_len=60). Note: urllib.request against the preview host returns 403 (WAF) — use page.evaluate(fetch) inside browser for API calls from Playwright."
+}

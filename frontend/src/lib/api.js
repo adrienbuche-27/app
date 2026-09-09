@@ -22,4 +22,13 @@ export const api = {
       .post(`${API}/upload`, fd, { headers: { "Content-Type": "multipart/form-data" } })
       .then((r) => r.data);
   },
+  parseGpx: (file, summitLat, summitLng) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("summit_lat", summitLat);
+    fd.append("summit_lng", summitLng);
+    return axios
+      .post(`${API}/gpx/parse`, fd, { headers: { "Content-Type": "multipart/form-data" } })
+      .then((r) => r.data);
+  },
 };

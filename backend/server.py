@@ -8,7 +8,8 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 import requests
-from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File
+import gpxpy
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -141,6 +142,10 @@ class SummitCreate(BaseModel):
     side_name: Optional[str] = None
     start_lat: Optional[float] = None
     start_lng: Optional[float] = None
+    # GPX-derived real climb (optional)
+    has_gpx: Optional[bool] = False
+    route: Optional[List[dict]] = None      # [{lat, lng}, ...] isolated climb line
+    profile: Optional[List[dict]] = None    # [{distance_km, elevation_m}, ...] from GPX
 
 
 class Summit(SummitCreate):
@@ -180,7 +185,14 @@ def _clean(doc: dict) -> dict:
 
 
 async def _apply_profile(doc: dict):
-    """If start_lat/lng present, fetch elevation profile and store on doc."""
+    """Choose the elevation profile for a summit.
+
+    If a GPX-derived profile is provided, keep it. Otherwise fall back to the
+    Open-Elevation straight-line estimate using the climb-side start point.
+    """
+    if doc.get("has_gpx") and doc.get("profile"):
+        doc["profile_status"] = "ok"
+        return
     if doc.get("start_lat") is not None and doc.get("start_lng") is not None:
         profile, status = await fetch_profile(
             doc["start_lat"], doc["start_lng"], doc["lat"], doc["lng"]
@@ -214,18 +226,24 @@ async def update_summit(summit_id: str, payload: SummitCreate):
     if not existing:
         raise HTTPException(404, "Summit not found")
     update = payload.model_dump()
-    # Re-fetch profile only if start point OR summit point changed
-    needs_profile_refresh = (
-        update.get("start_lat") != existing.get("start_lat")
-        or update.get("start_lng") != existing.get("start_lng")
-        or update.get("lat") != existing.get("lat")
-        or update.get("lng") != existing.get("lng")
-    )
-    if needs_profile_refresh:
-        await _apply_profile(update)
+    # GPX profile provided -> keep it as-is
+    if update.get("has_gpx") and update.get("profile"):
+        update["profile_status"] = "ok"
     else:
-        update["profile"] = existing.get("profile")
-        update["profile_status"] = existing.get("profile_status")
+        # Re-fetch profile if the previous summit had a GPX (now removed) OR the
+        # start/summit point changed.
+        needs_profile_refresh = (
+            existing.get("has_gpx")
+            or update.get("start_lat") != existing.get("start_lat")
+            or update.get("start_lng") != existing.get("start_lng")
+            or update.get("lat") != existing.get("lat")
+            or update.get("lng") != existing.get("lng")
+        )
+        if needs_profile_refresh:
+            await _apply_profile(update)
+        else:
+            update["profile"] = existing.get("profile")
+            update["profile_status"] = existing.get("profile_status")
     await db.summits.update_one({"id": summit_id}, {"$set": update})
     update["id"] = summit_id
     return update
@@ -254,6 +272,75 @@ async def refresh_profile(summit_id: str):
         {"$set": {"profile": profile, "profile_status": status}},
     )
     return {"profile": profile, "profile_status": status}
+
+
+# ---- GPX parsing / climb isolation ------------------------------------------
+GPX_MAX_POINTS = 1500
+
+
+def _parse_gpx_sync(text: str, summit_lat: float, summit_lng: float):
+    gpx = gpxpy.parse(text)
+    pts = []
+    for track in gpx.tracks:
+        for seg in track.segments:
+            for p in seg.points:
+                pts.append({"lat": p.latitude, "lng": p.longitude, "ele": p.elevation})
+    if not pts:
+        for route in gpx.routes:
+            for p in route.points:
+                pts.append({"lat": p.latitude, "lng": p.longitude, "ele": p.elevation})
+    if len(pts) < 2:
+        raise ValueError("No track points found in GPX")
+
+    # Downsample to keep payload light and slider responsive.
+    if len(pts) > GPX_MAX_POINTS:
+        stride = math.ceil(len(pts) / GPX_MAX_POINTS)
+        sampled = pts[::stride]
+        if sampled[-1] is not pts[-1]:
+            sampled.append(pts[-1])
+        pts = sampled
+
+    has_elevation = any(p["ele"] is not None for p in pts)
+
+    # Top = point nearest the summit coordinates.
+    top_idx = min(
+        range(len(pts)),
+        key=lambda i: _haversine_km(pts[i]["lat"], pts[i]["lng"], summit_lat, summit_lng),
+    )
+
+    # Base = lowest-elevation point before the top (start of sustained ascent).
+    if has_elevation and top_idx > 0:
+        base_idx = min(
+            range(0, top_idx + 1),
+            key=lambda i: pts[i]["ele"] if pts[i]["ele"] is not None else float("inf"),
+        )
+    else:
+        base_idx = 0
+    if base_idx >= top_idx:
+        base_idx = 0
+
+    return {
+        "points": pts,
+        "auto_start_idx": base_idx,
+        "auto_end_idx": top_idx,
+        "has_elevation": has_elevation,
+    }
+
+
+@api_router.post("/gpx/parse")
+async def parse_gpx(
+    file: UploadFile = File(...),
+    summit_lat: float = Form(...),
+    summit_lng: float = Form(...),
+):
+    raw = await file.read()
+    text = raw.decode("utf-8", errors="ignore")
+    try:
+        result = await asyncio.to_thread(_parse_gpx_sync, text, summit_lat, summit_lng)
+    except Exception as e:
+        logger.warning(f"GPX parse failed: {e}")
+        raise HTTPException(400, f"Could not parse GPX file: {e}") from e
+    return result
 
 
 # ---- Missing climbs ---------------------------------------------------------
