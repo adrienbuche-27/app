@@ -10,11 +10,36 @@ import {
 } from "recharts";
 
 /**
- * Elevation profile chart.
+ * Elevation profile chart with steepness colouring.
  * profile: [{ distance_km, elevation_m }, ...]
  * profile_status: "ok" | "failed" | "none" | undefined
  * size: "sm" | "md" | "lg"
  */
+
+// Gradient % -> colour. Green (gentle) through yellow/orange to red (brutal).
+function steepColor(grad) {
+  const g = Math.max(0, Math.abs(grad));
+  // 0% -> hue 130 (green); >=15% -> hue 0 (red)
+  const hue = Math.max(0, 130 - (Math.min(g, 15) / 15) * 130);
+  const light = 52 - Math.min(g, 15) * 0.6; // steeper = slightly deeper
+  return `hsl(${Math.round(hue)}, 85%, ${Math.round(light)}%)`;
+}
+
+function buildStops(profile) {
+  const total = profile[profile.length - 1].distance_km || 1;
+  const stops = [];
+  for (let i = 0; i < profile.length; i++) {
+    const prev = profile[Math.max(0, i - 1)];
+    const cur = profile[i];
+    const dDist = (cur.distance_km - prev.distance_km) * 1000; // m
+    const dEle = (cur.elevation_m ?? 0) - (prev.elevation_m ?? 0);
+    const grad = dDist > 0 ? (dEle / dDist) * 100 : 0;
+    const offset = Math.min(100, Math.max(0, (cur.distance_km / total) * 100));
+    stops.push({ offset, color: steepColor(grad) });
+  }
+  return stops;
+}
+
 export default function ElevationProfile({
   profile,
   profile_status,
@@ -23,6 +48,9 @@ export default function ElevationProfile({
   canRetry = false,
 }) {
   const height = size === "sm" ? 80 : size === "lg" ? 240 : 140;
+  const uid = React.useId().replace(/:/g, "");
+  const strokeId = `vs-stroke-${uid}`;
+  const fillId = `vs-fill-${uid}`;
 
   if (!profile || profile.length < 2) {
     if (profile_status === "failed") {
@@ -65,6 +93,7 @@ export default function ElevationProfile({
   const last = profile[profile.length - 1].elevation_m;
   const gain = Math.max(0, last - first);
   const total = profile[profile.length - 1].distance_km;
+  const stops = buildStops(profile);
 
   return (
     <div data-testid="elevation-profile" className="w-full">
@@ -77,9 +106,17 @@ export default function ElevationProfile({
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart data={profile} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
           <defs>
-            <linearGradient id="vs-elev-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF5722" stopOpacity={0.55} />
-              <stop offset="100%" stopColor="#FF5722" stopOpacity={0.02} />
+            {/* Horizontal steepness gradient for the line */}
+            <linearGradient id={strokeId} x1="0" y1="0" x2="1" y2="0">
+              {stops.map((s, i) => (
+                <stop key={i} offset={`${s.offset}%`} stopColor={s.color} />
+              ))}
+            </linearGradient>
+            {/* Same colours, translucent, for the fill */}
+            <linearGradient id={fillId} x1="0" y1="0" x2="1" y2="0">
+              {stops.map((s, i) => (
+                <stop key={i} offset={`${s.offset}%`} stopColor={s.color} stopOpacity={0.28} />
+              ))}
             </linearGradient>
           </defs>
           {size !== "sm" && (
@@ -110,12 +147,29 @@ export default function ElevationProfile({
           <Area
             type="monotone"
             dataKey="elevation_m"
-            stroke="#FF5722"
-            strokeWidth={2}
-            fill="url(#vs-elev-grad)"
+            stroke={`url(#${strokeId})`}
+            strokeWidth={size === "sm" ? 2 : 2.5}
+            fill={`url(#${fillId})`}
           />
         </AreaChart>
       </ResponsiveContainer>
+
+      {size !== "sm" && (
+        <div
+          data-testid="steepness-legend"
+          className="flex items-center gap-2 mt-2 font-mono-tel text-[9px] uppercase tracking-wider text-slate-500"
+        >
+          <span>Gentle</span>
+          <div
+            className="h-1.5 flex-1 rounded-full"
+            style={{
+              background:
+                "linear-gradient(90deg, hsl(130,85%,52%), hsl(80,85%,48%), hsl(45,85%,45%), hsl(20,85%,44%), hsl(0,85%,43%))",
+            }}
+          />
+          <span>Brutal</span>
+        </div>
+      )}
     </div>
   );
 }

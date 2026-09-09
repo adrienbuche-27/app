@@ -47,10 +47,15 @@
 - Edit mode shows GPX badge with Replace / Remove (raw file not retained); Remove falls back to straight-line profile
 - Scope: GPX only (FIT deferred), one file per summit; files without elevation draw the line but no profile
 
+## Update 2026-06 — Steepness-coloured elevation profiles
+- `ElevationProfile.jsx` now colours the profile line + fill by local gradient: green (gentle) → yellow → red (brutal), via per-point horizontal SVG gradient stops (`steepColor`/`buildStops`)
+- Added a "Gentle → Brutal" colour legend (shown at md/lg sizes); unique gradient ids via `useId` so multiple charts don't collide
+- My Summits cards bumped to `md` size to showcase the coloured profile + axes + legend; map popup stays compact `sm` (still coloured)
+- Verified on desktop + mobile via screenshots
+
 ## Backlog (P1)
 - Geographic map heatmap of visited summits (deferred from v1 stats)
 - FIT file upload (binary format) — follow-up to GPX
-- Color-coded gradient heatmap on the elevation profile (500m buckets)
 - Compare two sides of the same col side-by-side
 - Shareable "Summit Passport" card
 - Strava sync

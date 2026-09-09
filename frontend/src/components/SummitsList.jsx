@@ -101,7 +101,7 @@ export default function SummitsList({ summits, onEdit, onDelete, onRefreshed }) 
               <ElevationProfile
                 profile={s.profile}
                 profile_status={s.profile_status}
-                size="sm"
+                size="md"
                 canRetry
                 onRetry={() => refresh(s)}
               />
