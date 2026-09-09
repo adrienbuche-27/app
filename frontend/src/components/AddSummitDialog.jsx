@@ -41,6 +41,8 @@ const emptyForm = {
   start_lng: "",
 };
 
+const MANUAL_SIDE = "__manual__";
+
 export default function AddSummitDialog({
   open,
   onOpenChange,
@@ -51,12 +53,19 @@ export default function AddSummitDialog({
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isManual, setIsManual] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setForm(editSummit ? { ...emptyForm, ...editSummit } : emptyForm);
+      const initial = editSummit ? { ...emptyForm, ...editSummit } : emptyForm;
+      setForm(initial);
+      const col = famousCols.find((c) => c.id === initial.famous_col_id);
+      const sides = col?.sides || [];
+      const isPreset =
+        initial.side_name && sides.some((s) => s.name === initial.side_name);
+      setIsManual(Boolean(initial.side_name) && !isPreset);
     }
-  }, [open, editSummit]);
+  }, [open, editSummit, famousCols]);
 
   const bind = (key) => ({
     value: form[key] ?? "",
@@ -73,6 +82,7 @@ export default function AddSummitDialog({
     const col = famousCols.find((c) => c.id === id);
     if (!col) return;
     const firstSide = col.sides?.[0];
+    setIsManual(false);
     setForm((f) => ({
       ...f,
       famous_col_id: col.id,
@@ -92,8 +102,14 @@ export default function AddSummitDialog({
     toast.success(`Prefilled ${col.name}`);
   };
 
-  const pickSide = (sideName) => {
-    const side = availableSides.find((s) => s.name === sideName);
+  const handleSideChange = (val) => {
+    if (val === MANUAL_SIDE) {
+      setIsManual(true);
+      setForm((f) => ({ ...f, side_name: "" }));
+      return;
+    }
+    setIsManual(false);
+    const side = availableSides.find((s) => s.name === val);
     if (!side) return;
     setForm((f) => ({
       ...f,
@@ -225,66 +241,72 @@ export default function AddSummitDialog({
             <Label className="text-xs uppercase tracking-wider text-orange-400 font-mono-tel">
               Climb from
             </Label>
-            {availableSides.length > 0 ? (
-              <div className="mt-1.5">
-                <Select
-                  value={form.side_name || undefined}
-                  onValueChange={pickSide}
+            <div className="mt-1.5">
+              <Select
+                value={isManual ? MANUAL_SIDE : form.side_name || undefined}
+                onValueChange={handleSideChange}
+              >
+                <SelectTrigger
+                  data-testid="side-select"
+                  className="bg-slate-900 border-slate-800"
                 >
-                  <SelectTrigger
-                    data-testid="side-select"
-                    className="bg-slate-900 border-slate-800"
-                  >
-                    <SelectValue placeholder="Pick which side you climbed" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-950 border-slate-800 text-slate-100">
-                    {availableSides.map((s) => (
-                      <SelectItem key={s.name} value={s.name}>
-                        {s.name} — {s.distance_km}km @ {s.avg_gradient}%
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-slate-500 mt-2">
-                  Distance, gradient and start point are prefilled from the catalog.
-                </p>
-              </div>
-            ) : (
-              <>
-                <Input
-                  data-testid="input-side-name"
-                  {...bind("side_name")}
-                  placeholder="e.g. east ridge, from Chamonix"
-                  className="mt-1.5"
-                />
-                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <SelectValue placeholder="Pick which side you climbed" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-950 border-slate-800 text-slate-100 z-[10000]">
+                  {availableSides.map((s) => (
+                    <SelectItem key={s.name} value={s.name}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={MANUAL_SIDE} data-testid="side-manual-option">
+                    ➕ Add my own side…
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {isManual ? (
+                <div className="mt-3 space-y-2">
                   <Input
-                    data-testid="input-start-lat"
-                    type="number"
-                    step="0.0001"
-                    value={form.start_lat}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, start_lat: e.target.value }))
-                    }
-                    placeholder="Start lat (optional)"
+                    data-testid="input-side-name"
+                    {...bind("side_name")}
+                    placeholder="e.g. east ridge, from Chamonix"
                   />
-                  <Input
-                    data-testid="input-start-lng"
-                    type="number"
-                    step="0.0001"
-                    value={form.start_lng}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, start_lng: e.target.value }))
-                    }
-                    placeholder="Start lng (optional)"
-                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      data-testid="input-start-lat"
+                      type="number"
+                      step="0.0001"
+                      value={form.start_lat}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, start_lat: e.target.value }))
+                      }
+                      placeholder="Start lat (optional)"
+                    />
+                    <Input
+                      data-testid="input-start-lng"
+                      type="number"
+                      step="0.0001"
+                      value={form.start_lng}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, start_lng: e.target.value }))
+                      }
+                      placeholder="Start lng (optional)"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Name your side and add the base coordinates — we&apos;ll fetch the
+                    elevation profile from Open-Elevation. Distance and gradient go in
+                    the boxes below.
+                  </p>
                 </div>
+              ) : (
                 <p className="text-[11px] text-slate-500 mt-2">
-                  Provide the base coordinates and we&apos;ll fetch the elevation profile from
-                  Open-Elevation.
+                  {availableSides.length > 0
+                    ? "Distance, gradient and start point are prefilled from the catalog and stay editable below."
+                    : "Choose “➕ Add my own side…” to name your climb and set its details."}
                 </p>
-              </>
-            )}
+              )}
+            </div>
           </div>
 
           <Field label="Elevation (m)" required>

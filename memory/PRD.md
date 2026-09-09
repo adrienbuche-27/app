@@ -30,7 +30,15 @@
 - Kinetic ticker with iconic col facts
 - Iterations 1 → 3 all 100% pass (frontend + backend + Open-Elevation integration)
 
+## Update 2026-06 — "Climb from" field rework (iteration 5, 100% pass)
+- Climb-from dropdown now ALWAYS shows on every summit (with or without a famous col)
+- Dropdown options are side NAMES ONLY (removed inline distance/gradient text)
+- Added "➕ Add my own side…" manual entry option → reveals custom name text box + Start lat/lng boxes
+- Preset side pick auto-fills Distance/Avg grad/Max grad/start point into the dedicated boxes, fully editable
+- Dropdown selects reliably via native click (no force needed)
+
 ## Backlog (P1)
+- Geographic map heatmap of visited summits (deferred from v1 stats)
 - GPX/FIT upload to replace great-circle profile with real route line on map
 - Color-coded gradient heatmap on the elevation profile (500m buckets)
 - Compare two sides of the same col side-by-side

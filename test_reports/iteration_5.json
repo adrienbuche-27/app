@@ -1,0 +1,27 @@
+{
+  "summary": "Frontend-only verification of 'Climb from' dropdown improvements in AddSummitDialog. All 5 spec requirements PASS. (1) With no famous col selected, side-select is visible and contains ONLY '➕ Add my own side…' option. (2) Selecting manual reveals input-side-name + input-start-lat + input-start-lng; filling name/elevation/lat/lng + custom side name saves successfully — verified via GET /api/summits (side_name='TEST_north face' persisted). (3) Selecting Mont Ventoux via famous-col-select then opening side-select shows exactly ['Bédoin','Malaucène','Sault','➕ Add my own side…'] — side labels are NAMES ONLY, no 'km' or '%' text. (4) Picking Bédoin auto-fills input-distance=21.4, input-avg-grad=7.5, input-max-grad=12; edited distance to 22.5 successfully and Save persisted distance_km=22.5 + side_name='Bédoin'. (5) Dropdown click works reliably WITHOUT force=True (native click) for the specified flows. Test cleanup: both TEST_ summits deleted (200 OK).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AddSummitDialog Select", "issues": ["Console warning: 'Select is changing from uncontrolled to controlled'. The Select value prop toggles between undefined (empty side_name) and a string; consider passing '' or a sentinel consistently. Cosmetic only, no functional impact."]}
+    ]
+  },
+  "other_observations": [
+    "Webpack ResizeObserver overlay (id='webpack-dev-server-client-overlay') can still re-appear after multiple dialog open/close cycles (observed on 3rd cycle). The index.js silencer works for typical flows but is not 100% robust. Consider disabling devServer.client.overlay in CRA config for defence-in-depth. Did NOT block any of the 5 specified acceptance tests."
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AddSummitDialog Select: value={isManual ? MANUAL_SIDE : form.side_name || undefined} — the flip between string and undefined triggers React's controlled/uncontrolled warning. Use '' instead of undefined, or always pass a defined string.",
+    "handleSideChange: side.start_lat / start_lng / distance_km / avg_gradient / max_gradient are copied raw from catalog into form (numbers). bind() then reads them as-is; when user edits, they become strings. submit() normalises via Number(), so it works — but consider stringifying on assignment for consistency.",
+    "index.js ResizeObserver silencing works for the happy path but overlay reappeared after heavy dialog cycling; disabling CRA client overlay in devServer config recommended."
+  ],
+  "updated_files": ["/app/test_reports/iteration_5.json"],
+  "success_rate": {"backend": "not tested (frontend-only per request)", "frontend": "100% (5/5 spec cases verified)"},
+  "seed_data_creation": "Created 2 TEST_-prefixed summits (TEST_CustomPeak, TEST_Ventoux_Bedoin) during test; both deleted via DELETE /api/summits/{id} (both 200 OK). No residual data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "AddSummitDialog 'Climb from' feature is fully implemented per spec. Only nit is a controlled/uncontrolled Select warning; not user-facing. If retesting, do NOT use force=True on data-testid=side-select — the fix's whole point is that native click works. Occasional ResizeObserver overlay flake after heavy dialog cycling is a known dev-only issue."
+}
