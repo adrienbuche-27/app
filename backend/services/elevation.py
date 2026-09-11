@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 # ---- Elevation profile (Open-Elevation) -------------------------------------
 OPEN_ELEV_URL = "https://api.open-elevation.com/api/v1/lookup"
 PROFILE_SAMPLES = 60
+ELEVATION_CHUNK = 100
 
 
 def _sample_points(start_lat: float, start_lng: float, end_lat: float, end_lng: float, n: int = PROFILE_SAMPLES):
@@ -49,3 +50,26 @@ def _fetch_profile_sync(start_lat: float, start_lng: float, end_lat: float, end_
 
 async def fetch_profile(start_lat, start_lng, end_lat, end_lng):
     return await asyncio.to_thread(_fetch_profile_sync, start_lat, start_lng, end_lat, end_lng)
+
+
+def _fetch_elevations_sync(points: list) -> list:
+    """Elevation for arbitrary (lat, lng) points, e.g. real road geometry. Chunked
+    since Open-Elevation caps how many locations it accepts per request."""
+    elevations: list = [None] * len(points)
+    for start in range(0, len(points), ELEVATION_CHUNK):
+        chunk = points[start:start + ELEVATION_CHUNK]
+        payload = {"locations": [{"latitude": la, "longitude": ln} for la, ln in chunk]}
+        try:
+            resp = requests.post(OPEN_ELEV_URL, json=payload, timeout=25)
+            resp.raise_for_status()
+            results = resp.json().get("results", [])
+            for i, r in enumerate(results):
+                ele = r.get("elevation")
+                elevations[start + i] = float(ele) if ele is not None else None
+        except Exception as e:
+            logger.warning(f"Elevation batch fetch failed: {e}")
+    return elevations
+
+
+async def fetch_elevations(points: list) -> list:
+    return await asyncio.to_thread(_fetch_elevations_sync, points)

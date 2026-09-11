@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
-import { photoUrl } from "../lib/api";
+import { Search, Loader2, Compass } from "lucide-react";
+import { api, photoUrl } from "../lib/api";
+import { toast } from "sonner";
 import ElevationProfile from "./ElevationProfile";
 
 const conqueredIcon = (elev) =>
@@ -24,8 +26,75 @@ const missingIcon = (elev) =>
     iconAnchor: [20, 8],
   });
 
-export default function MapView({ summits, famousCols, missingIds }) {
+const discoveredIcon = L.divIcon({
+  className: "vs-marker discovered",
+  html: `<div class="pin" style="background:#8B5CF6;border-style:dotted"></div>`,
+  iconSize: [40, 34],
+  iconAnchor: [20, 8],
+});
+
+// Reads the live Leaflet map instance (only available inside <MapContainer>) so the
+// "Search this area" button can query the region the user actually panned/zoomed to.
+function DiscoverControl({ onResults }) {
+  const map = useMap();
+  const [loading, setLoading] = useState(false);
+
+  const search = async () => {
+    setLoading(true);
+    try {
+      const b = map.getBounds();
+      const results = await api.discoverPasses({
+        south: b.getSouth(),
+        west: b.getWest(),
+        north: b.getNorth(),
+        east: b.getEast(),
+      });
+      onResults(results);
+      if (results.length === 0) {
+        toast.info("No named passes found here — try zooming out a little");
+      } else {
+        toast.success(`Found ${results.length} named pass${results.length === 1 ? "" : "es"}`);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Search failed — try zooming in further");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      data-testid="discover-search-btn"
+      onClick={search}
+      disabled={loading}
+      className="pointer-events-auto inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold font-mono-tel uppercase tracking-wider backdrop-blur-xl bg-slate-900/80 border border-slate-800 text-slate-200 hover:text-white hover:border-violet-500/50 transition-colors disabled:opacity-60"
+    >
+      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+      {loading ? "Searching…" : "Search this area"}
+    </button>
+  );
+}
+
+export default function MapView({ summits, famousCols, missingIds, onDiscoverSelect }) {
   const [filter, setFilter] = useState("all"); // all | conquered | missing
+  const [discovered, setDiscovered] = useState([]);
+  const [sidesLoadingId, setSidesLoadingId] = useState(null);
+
+  const pickDiscovered = async (pass) => {
+    setSidesLoadingId(pass.osm_id);
+    try {
+      const res = await api.discoverPassSides(pass.lat, pass.lng);
+      onDiscoverSelect(pass, res.sides || []);
+      if (!res.sides || res.sides.length === 0) {
+        toast.info("Couldn't derive a climb side automatically — fill it in manually");
+      }
+    } catch {
+      toast.error("Couldn't compute climb info for this pass");
+      onDiscoverSelect(pass, []);
+    } finally {
+      setSidesLoadingId(null);
+    }
+  };
 
   const points = useMemo(() => {
     const list = [];
@@ -124,6 +193,51 @@ export default function MapView({ summits, famousCols, missingIds }) {
             />
           </LayersControl.BaseLayer>
         </LayersControl>
+
+        <div className="absolute z-[500] top-16 right-4 flex flex-col items-end gap-2 pointer-events-none">
+          <DiscoverControl onResults={setDiscovered} />
+          {discovered.length > 0 && (
+            <span className="pointer-events-auto px-2.5 py-1 rounded-full text-[10px] font-mono-tel uppercase tracking-wider bg-violet-500/15 text-violet-300 border border-violet-500/30">
+              {discovered.length} pass{discovered.length === 1 ? "" : "es"} found
+            </span>
+          )}
+        </div>
+
+        {discovered.map((pass) => (
+          <Marker key={`discovered-${pass.osm_id}`} position={[pass.lat, pass.lng]} icon={discoveredIcon}>
+            <Popup>
+              <div className="min-w-[200px]">
+                <div className="flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5 text-violet-400" />
+                  <div className="font-display font-bold text-base">{pass.name}</div>
+                </div>
+                {pass.elevation != null && (
+                  <div className="mt-1 font-mono-tel text-xs text-orange-400">
+                    {Math.round(pass.elevation)}m
+                  </div>
+                )}
+                <button
+                  type="button"
+                  data-testid={`discover-log-btn-${pass.osm_id}`}
+                  onClick={() => pickDiscovered(pass)}
+                  disabled={sidesLoadingId === pass.osm_id}
+                  className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 text-xs font-semibold disabled:opacity-60"
+                >
+                  {sidesLoadingId === pass.osm_id ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Computing climb…
+                    </>
+                  ) : (
+                    "Log this summit"
+                  )}
+                </button>
+                <p className="mt-1.5 text-[10px] text-slate-500">
+                  Distance & gradient are estimated from OpenStreetMap road data — double-check before saving.
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
         {points.map((p) =>
           p.type === "conquered" && p.data.route && p.data.route.length > 1 ? (
