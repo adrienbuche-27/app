@@ -9,6 +9,12 @@ from services.geo import bearing_deg, compass_point, haversine_km, resample_poin
 logger = logging.getLogger(__name__)
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+# Overpass's usage policy requires clients to identify themselves; requests' default
+# User-Agent ("python-requests/x.x") gets rejected with 406 by the public instance.
+OVERPASS_HEADERS = {
+    "User-Agent": "VeloSummit/1.0 (personal cycling-climb tracker)",
+    "Accept": "application/json",
+}
 EXCLUDED_HIGHWAYS = {"footway", "path", "cycleway", "steps", "bridleway", "track", "pedestrian"}
 
 MAX_SIDE_KM = 30.0
@@ -17,7 +23,7 @@ GRADIENT_WINDOW_KM = 0.3
 
 
 def _overpass_query(query: str) -> dict:
-    resp = requests.post(OVERPASS_URL, data={"data": query}, timeout=30)
+    resp = requests.post(OVERPASS_URL, data={"data": query}, headers=OVERPASS_HEADERS, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
