@@ -75,6 +75,25 @@ export default function App() {
     setDialogOpen(true);
   };
 
+  const openFromDiscovered = (pass, sides) => {
+    const firstSide = sides?.[0];
+    setEditSummit({
+      name: pass.name,
+      elevation: pass.elevation ?? "",
+      lat: pass.lat,
+      lng: pass.lng,
+      date_climbed: new Date().toISOString().slice(0, 10),
+      side_name: firstSide?.name || "",
+      start_lat: firstSide?.start_lat ?? "",
+      start_lng: firstSide?.start_lng ?? "",
+      distance_km: firstSide?.distance_km ?? "",
+      avg_gradient: firstSide?.avg_gradient ?? "",
+      max_gradient: firstSide?.max_gradient ?? "",
+    });
+    setPrefillCol(null);
+    setDialogOpen(true);
+  };
+
   const openFromCol = (col) => {
     const firstSide = col.sides?.[0];
     setEditSummit({
@@ -145,7 +164,12 @@ export default function App() {
 
       <main className="max-w-[1400px] mx-auto px-6 lg:px-10 py-8">
         {active === "map" && (
-          <MapView summits={summits} famousCols={famousCols} missingIds={missingIds} />
+          <MapView
+            summits={summits}
+            famousCols={famousCols}
+            missingIds={missingIds}
+            onDiscoverSelect={openFromDiscovered}
+          />
         )}
         {active === "summits" && (
           <div>

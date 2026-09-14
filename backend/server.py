@@ -5,7 +5,7 @@ from fastapi import APIRouter, FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from db import client
-from routers import catalog, gpx, photos, stats, summits
+from routers import catalog, discover, gpx, photos, stats, summits
 from services.storage import init_storage
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,7 @@ async def root():
 
 api_router.include_router(summits.router)
 api_router.include_router(catalog.router)
+api_router.include_router(discover.router)
 api_router.include_router(gpx.router)
 api_router.include_router(stats.router)
 api_router.include_router(photos.router)

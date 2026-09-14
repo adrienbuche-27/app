@@ -31,4 +31,8 @@ export const api = {
       .post(`${API}/gpx/parse`, fd, { headers: { "Content-Type": "multipart/form-data" } })
       .then((r) => r.data);
   },
+  discoverPasses: (bounds) =>
+    axios.get(`${API}/discover/passes`, { params: bounds }).then((r) => r.data),
+  discoverPassSides: (lat, lng) =>
+    axios.get(`${API}/discover/passes/sides`, { params: { lat, lng } }).then((r) => r.data),
 };
